@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Persiapan Barang</title>
+<style>
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:'Segoe UI',Roboto,Arial,sans-serif;
+    background:#f1f4f7; color:#1f2937;
+  }
+  .topbar{
+    background:#1e3a34; color:#fff; padding:18px 20px;
+  }
+  .topbar h1{margin:0; font-size:1.25rem; font-weight:700;}
+  .topbar p{margin:4px 0 0; font-size:.8rem; color:#a9c9bf;}
+
+  .container{max-width:960px; margin:0 auto; padding:16px;}
+
+  .summary{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px;
+  }
+  .summary .card{
+    background:#fff; border-radius:12px; padding:12px 10px; text-align:center;
+    box-shadow:0 1px 3px rgba(0,0,0,.07);
+  }
+  .summary .card .num{font-size:1.4rem; font-weight:800; display:block;}
+  .summary .card .lbl{font-size:.7rem; color:#6b7280; text-transform:uppercase; letter-spacing:.03em;}
+  .summary .c-total .num{color:#1e3a34;}
+  .summary .c-lengkap .num{color:#1a9e66;}
+  .summary .c-kurang .num{color:#d3860a;}
+  .summary .c-kosong .num{color:#c0392b;}
+
+  .toolbar{
+    display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; align-items:center;
+  }
+  .search-box{
+    flex:1; min-width:180px; padding:10px 14px; border-radius:10px; border:1px solid #dfe3e8;
+    font-size:.9rem; background:#fff;
+  }
+  .filter-btn{
+    padding:9px 14px; border-radius:10px; border:1px solid #dfe3e8; background:#fff;
+    font-size:.8rem; cursor:pointer; color:#4b5563; font-weight:600;
+  }
+  .filter-btn.active{background:#1e3a34; color:#fff; border-color:#1e3a34;}
+
+  .cat-block{
+    background:#fff; border-radius:14px; margin-bottom:14px; overflow:hidden;
+    box-shadow:0 1px 3px rgba(0,0,0,.07);
+  }
+  .cat-title{
+    padding:11px 16px; background:#eef3f1; color:#1e3a34; font-weight:700; font-size:.88rem;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .cat-title .cat-count{font-weight:500; font-size:.72rem; color:#6b7280;}
+
+  table{width:100%; border-collapse:collapse;}
+  th{
+    background:#fafbfc; color:#8a94a3; font-size:.68rem; text-transform:uppercase;
+    padding:8px 10px; text-align:left; border-bottom:1px solid #eef0f2; letter-spacing:.03em;
+  }
+  th.center, td.center{text-align:center;}
+  td{padding:9px 10px; border-bottom:1px solid #f3f4f6; font-size:.86rem;}
+  tr.status-lengkap{background:#f3fbf6;}
+  tr.status-kurang{background:#fffaf1;}
+  tr.status-kosong{background:#fdf2f1;}
+  tr.status-tidakada{background:#f2f2f4;}
+  tr.hidden-row{display:none;}
+
+  .item-name{font-weight:600; color:#26323f;}
+  .qty-req{font-weight:700; color:#1e3a34; white-space:nowrap;}
+
+  input.ada-input{
+    width:52px; padding:5px; border:1px solid #d1d5db; border-radius:7px;
+    text-align:center; font-size:.85rem;
+  }
+  select.status-select{
+    padding:5px 6px; border-radius:7px; border:1px solid #d1d5db; font-size:.75rem;
+    background:#fff; font-weight:600; color:#4b5563;
+  }
+  .badge{
+    display:inline-block; padding:3px 9px; border-radius:20px; font-size:.7rem; font-weight:700; white-space:nowrap;
+  }
+  .badge-lengkap{background:#d7f2e3; color:#1a7a4c;}
+  .badge-kurang{background:#fdecc8; color:#8a5b00;}
+  .badge-kosong{background:#fadbd8; color:#a93226;}
+  .badge-tidakada{background:#e2e3e6; color:#555a63;}
+  .badge-belum{background:#eceff1; color:#8a94a3;}
+
+  .footer-actions{
+    display:flex; gap:10px; margin-top:6px; margin-bottom:30px; justify-content:center;
+  }
+  .btn{
+    padding:10px 20px; border-radius:10px; border:1px solid #dfe3e8; background:#fff;
+    color:#4b5563; font-size:.85rem; cursor:pointer; font-weight:600;
+  }
+  .btn:hover{background:#f3f4f6;}
+  .btn-danger{color:#a93226; border-color:#f3c9c4;}
+
+  @media (max-width:520px){
+    .summary{grid-template-columns:repeat(2,1fr);}
+    th:nth-child(1), td:nth-child(1){min-width:130px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>📦 Dashboard Persiapan Barang</h1>
+  <p>Isi jumlah stok yang tersedia untuk tiap item. Status kelengkapan otomatis terhitung.</p>
+</div>
+
+<div class="container">
+
+  <div class="summary">
+    <div class="card c-total"><span class="num" id="sTotal">0</span><span class="lbl">Total Item</span></div>
+    <div class="card c-lengkap"><span class="num" id="sLengkap">0</span><span class="lbl">Lengkap</span></div>
+    <div class="card c-kurang"><span class="num" id="sKurang">0</span><span class="lbl">Kurang</span></div>
+    <div class="card c-kosong"><span class="num" id="sKosong">0</span><span class="lbl">Kosong / Tidak Ada</span></div>
+  </div>
+
+  <div class="toolbar">
+    <input class="search-box" id="searchBox" type="text" placeholder="🔍 Cari nama barang...">
+  </div>
+  <div class="toolbar" id="filterBar">
+    <button class="filter-btn active" data-filter="semua">Semua</button>
+    <button class="filter-btn" data-filter="belum">Belum Diisi</button>
+    <button class="filter-btn" data-filter="lengkap">✅ Lengkap</button>
+    <button class="filter-btn" data-filter="kurang">⚠ Kurang</button>
+    <button class="filter-btn" data-filter="kosong">❌ Kosong</button>
+    <button class="filter-btn" data-filter="tidakada">🚫 Tidak Ada</button>
+  </div>
+
+  <div id="listArea"></div>
+
+  <div class="footer-actions">
+    <button class="btn" onclick="window.print()">🖨️ Cetak / Simpan PDF</button>
+    <button class="btn btn-danger" onclick="resetAll()">↺ Reset Semua Data</button>
+  </div>
+</div>
+
+<script>
+const data = {
+  "Teh Sisri": [
+    ["Teh Sisri Gulabatu",2,"pak"],
+    ["Teh Sisri Lemon",2,"pak"],
+    ["Teh Sisri Apel",2,"pak"],
+  ],
+  "Trobos": [
+    ["Trobos Kuning",2,"pak"],
+  ],
+  "Tea Jus": [
+    ["Tea Jus Madu",3,"pak"],
+    ["Tea Jus Gulabatu",2,"pak"],
+  ],
+  "Marimas": [
+    ["Marimas Kelapa Muda",3,"pak"],
+    ["Marimas Cocopandan",3,"pak"],
+    ["Marimas Jeruk",3,"pak"],
+    ["Marimas Mangga",3,"pak"],
+    ["Marimas Jeruk Peras",2,"pak"],
+  ],
+  "Jasjus": [
+    ["Jasjus Jeruk Peras",3,"pak"],
+    ["Jasjus Jeruk",3,"pak"],
+    ["Jasjus Lemon",3,"pak"],
+    ["Jasjus Jambu",3,"pak"],
+    ["Jasjus Leci",3,"pak"],
+    ["Jasjus Strawberry",3,"pak"],
+    ["Jasjus Cincau",2,"pak"],
+  ],
+  "Frenta": [
+    ["Frenta Cola",2,"pak"],
+    ["Frenta Anggur",2,"pak"],
+    ["Frenta Strawberry",3,"pak"],
+  ],
+  "Pop Ice": [
+    ["Pop Ice Es Doger",2,"pak"],
+    ["Pop Ice Leci",2,"pak"],
+    ["Pop Ice Strawberry",2,"pak"],
+    ["Pop Ice Active Tornado Squash",3,"pak"],
+    ["Pop Ice Active Thunder Chocomalt",3,"pak"],
+    ["Pop Ice Alpukat",3,"pak"],
+    ["Pop Ice Permen Karet",3,"pak"],
+    ["Pop Ice Choco Cream",2,"pak"],
+    ["Pop Ice Choco Chese",2,"pak"],
+    ["Pop Ice Choco Cookies",2,"pak"],
+    ["Pop Ice Sultan Chocociato",3,"pak"],
+    ["Pop Ice Coklat Susu",2,"pak"],
+    ["Pop Ice Taro",3,"pak"],
+    ["Pop Ice Karamel",2,"pak"],
+  ],
+  "Susu Jahe & STMJ": [
+    ["Susu Jahe Sidomuncul",5,"pak"],
+    ["Anget Sari Susu Jahe",5,"pak"],
+    ["STMJ Original",1,"pak"],
+    ["STMJ Cokelat",1,"pak"],
+  ],
+  "Kopi": [
+    ["Kopi Jahe",5,"pak"],
+  ],
+  "Pop Mie": [
+    ["Pop Mie Soto Ayam",1,"dos"],
+    ["Pop Mie Kari Ayam",1,"dos"],
+    ["Pop Mie Ayam Bawang",1,"dos"],
+    ["Pop Mie Baso",1,"dos"],
+    ["Pop Mie Gledek",1,"dos"],
+  ],
+  "Lainnya": [
+    ["Chocolatos Kurma",3,"renteng"],
+    ["Larutan Segar Kaleng Campur",1,"dus"],
+    ["Kacang Atom Kancil",1,"ball"],
+  ]
+};
+
+const listArea = document.getElementById('listArea');
+let rowsInfo = [];
+let currentFilter = 'semua';
+
+function loadState(){
+  try{ return JSON.parse(localStorage.getItem('barangStateV2')||'{}'); }catch(e){ return {}; }
+}
+function saveState(s){ localStorage.setItem('barangStateV2', JSON.stringify(s)); }
+
+function statusFromAda(ada, minta){
+  if(ada === '' || ada === null || ada === undefined) return 'belum';
+  const a = parseInt(ada);
+  if(isNaN(a)) return 'belum';
+  if(a <= 0) return 'kosong';
+  if(a < minta) return 'kurang';
+  return 'lengkap';
+}
+
+function render(){
+  const state = loadState();
+  listArea.innerHTML = '';
+  rowsInfo = [];
+
+  for(const cat in data){
+    const block = document.createElement('div');
+    block.className = 'cat-block';
+    block.dataset.cat = cat;
+    block.innerHTML = `<div class="cat-title"><span>${cat}</span><span class="cat-count">${data[cat].length} item</span></div>`;
+
+    const table = document.createElement('table');
+    table.innerHTML = `
+      <tr>
+        <th>Nama Barang</th>
+        <th class="center">Diminta</th>
+        <th class="center">Tersedia</th>
+        <th class="center">Status</th>
+        <th class="center">Manual</th>
+      </tr>
+    `;
+
+    data[cat].forEach(([name, minta, unit])=>{
+      const id = cat + '|' + name;
+      const rs = state[id] || { ada:'', manual:'' };
+      const tr = document.createElement('tr');
+      tr.dataset.id = id;
+      tr.dataset.minta = minta;
+      tr.dataset.name = name.toLowerCase();
+
+      tr.innerHTML = `
+        <td class="item-name">${name}</td>
+        <td class="center qty-req">${minta} ${unit}</td>
+        <td class="center"><input type="number" min="0" class="ada-input" value="${rs.ada}" placeholder="0"></td>
+        <td class="center badge-cell"></td>
+        <td class="center">
+          <select class="status-select">
+            <option value="">Otomatis</option>
+            <option value="lengkap">Lengkap</option>
+            <option value="kurang">Kurang</option>
+            <option value="kosong">Kosong</option>
+            <option value="tidakada">Tidak Ada</option>
+          </select>
+        </td>
+      `;
+
+      const adaInput = tr.querySelector('.ada-input');
+      const select = tr.querySelector('.status-select');
+      select.value = rs.manual || '';
+
+      function update(){
+        const s = loadState();
+        const cur = { ada: adaInput.value, manual: select.value };
+        s[id] = cur;
+        saveState(s);
+        applyBadge(tr, cur, minta);
+        updateSummary();
+        applyFilter();
+      }
+      adaInput.addEventListener('input', update);
+      select.addEventListener('change', update);
+
+      table.appendChild(tr);
+      rowsInfo.push(tr);
+      applyBadge(tr, rs, minta);
+    });
+
+    block.appendChild(table);
+    listArea.appendChild(block);
+  }
+  updateSummary();
+  applyFilter();
+}
+
+function applyBadge(tr, rs, minta){
+  const badgeCell = tr.querySelector('.badge-cell');
+  const status = rs.manual ? rs.manual : statusFromAda(rs.ada, minta);
+  tr.classList.remove('status-lengkap','status-kurang','status-kosong','status-tidakada');
+  tr.dataset.status = status;
+  const ada = parseInt(rs.ada) || 0;
+  let label = '';
+  if(status === 'lengkap'){
+    label = '<span class="badge badge-lengkap">✅ Lengkap</span>';
+    tr.classList.add('status-lengkap');
+  } else if(status === 'kurang'){
+    const kurang = minta - ada;
+    label = `<span class="badge badge-kurang">⚠ Kurang${kurang>0 ? ' '+kurang : ''}</span>`;
+    tr.classList.add('status-kurang');
+  } else if(status === 'kosong'){
+    label = '<span class="badge badge-kosong">❌ Kosong</span>';
+    tr.classList.add('status-kosong');
+  } else if(status === 'tidakada'){
+    label = '<span class="badge badge-tidakada">🚫 Tidak Ada</span>';
+    tr.classList.add('status-tidakada');
+  } else {
+    label = '<span class="badge badge-belum">Belum diisi</span>';
+  }
+  badgeCell.innerHTML = label;
+}
+
+function updateSummary(){
+  const state = loadState();
+  let lengkap=0, kurang=0, kosong=0;
+  rowsInfo.forEach(tr=>{
+    const id = tr.dataset.id;
+    const minta = parseInt(tr.dataset.minta);
+    const rs = state[id] || {ada:'',manual:''};
+    const status = rs.manual ? rs.manual : statusFromAda(rs.ada, minta);
+    if(status==='lengkap') lengkap++;
+    else if(status==='kurang') kurang++;
+    else if(status==='kosong' || status==='tidakada') kosong++;
+  });
+  document.getElementById('sTotal').textContent = rowsInfo.length;
+  document.getElementById('sLengkap').textContent = lengkap;
+  document.getElementById('sKurang').textContent = kurang;
+  document.getElementById('sKosong').textContent = kosong;
+}
+
+function applyFilter(){
+  const q = document.getElementById('searchBox').value.toLowerCase();
+  rowsInfo.forEach(tr=>{
+    const matchSearch = tr.dataset.name.includes(q);
+    const status = tr.dataset.status || 'belum';
+    let matchFilter = true;
+    if(currentFilter === 'belum') matchFilter = (status === 'belum');
+    else if(currentFilter === 'lengkap') matchFilter = (status === 'lengkap');
+    else if(currentFilter === 'kurang') matchFilter = (status === 'kurang');
+    else if(currentFilter === 'kosong') matchFilter = (status === 'kosong');
+    else if(currentFilter === 'tidakada') matchFilter = (status === 'tidakada');
+    tr.classList.toggle('hidden-row', !(matchSearch && matchFilter));
+  });
+  document.querySelectorAll('.cat-block').forEach(block=>{
+    const visible = [...block.querySelectorAll('tbody tr, tr')].some(tr=> tr.dataset.id && !tr.classList.contains('hidden-row'));
+    block.style.display = visible ? '' : 'none';
+  });
+}
+
+document.getElementById('searchBox').addEventListener('input', applyFilter);
+document.querySelectorAll('.filter-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = btn.dataset.filter;
+    applyFilter();
+  });
+});
+
+function resetAll(){
+  if(confirm('Reset semua data yang sudah diisi?')){
+    localStorage.removeItem('barangStateV2');
+    render();
+  }
+}
+
+render();
+</script>
+</body>
+</html>
